@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net"
 	"os"
@@ -30,46 +31,47 @@ func main() {
 	// logger
 	log := mustMakeLogger(cfg.LogLevel)
 
+	if err := run(cfg, log); err != nil {
+		log.Error("server failed", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run(cfg config.Config, log *slog.Logger) error {
 	log.Info("starting server")
 	log.Debug("debug messages are enabled")
 
 	// database adapter
 	storage, err := db.New(log, cfg.DBAddress)
 	if err != nil {
-		log.Error("failed to connect to db", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to connect to db: %v", err)
 	}
 	if err := storage.Migrate(); err != nil {
-		log.Error("failed to migrate db", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to migrate db: %v", err)
 	}
 
 	// xkcd adapter
 	xkcd, err := xkcd.NewClient(cfg.XKCD.URL, cfg.XKCD.Timeout, log)
 	if err != nil {
-		log.Error("failed create XKCD client", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed create XKCD client: %v", err)
 	}
 
 	// words adapter
 	words, err := words.NewClient(cfg.WordsAddress, log)
 	if err != nil {
-		log.Error("failed create Words client", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed create Words client: %v", err)
 	}
 
 	// service
 	updater, err := core.NewService(log, storage, xkcd, words, cfg.XKCD.Concurrency)
 	if err != nil {
-		log.Error("failed create Update service", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed create Update service: %v", err)
 	}
 
 	// grpc server
 	listener, err := net.Listen("tcp", cfg.Address)
 	if err != nil {
-		log.Error("failed to listen", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer()
@@ -87,9 +89,9 @@ func main() {
 	}()
 
 	if err := s.Serve(listener); err != nil {
-		log.Error("failed to serve", "erorr", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to serve: %v", err)
 	}
+	return nil
 }
 
 func mustMakeLogger(logLevel string) *slog.Logger {
@@ -104,6 +106,6 @@ func mustMakeLogger(logLevel string) *slog.Logger {
 	default:
 		panic("unknown log level: " + logLevel)
 	}
-	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level, AddSource: true})
+	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
 	return slog.New(handler)
 }

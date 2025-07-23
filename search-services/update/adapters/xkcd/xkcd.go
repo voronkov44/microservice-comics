@@ -29,7 +29,7 @@ func NewClient(url string, timeout time.Duration, log *slog.Logger) (*Client, er
 	}, nil
 }
 
-func (c Client) Get(ctx context.Context, ID int) (core.XKCDInfo, error) {
+func (c Client) Get(ctx context.Context, id int) (core.XKCDInfo, error) {
 	return core.XKCDInfo{}, nil
 }
 
