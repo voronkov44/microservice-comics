@@ -128,7 +128,7 @@ func TestUpdateDbNoToken(t *testing.T) {
 }
 
 func TestDropDbNoToken(t *testing.T) {
-	req, err := http.NewRequest(http.MethodPost, address+"/api/db/drop", nil)
+	req, err := http.NewRequest(http.MethodDelete, address+"/api/db", nil)
 	require.NoError(t, err, "cannot make request")
 	resp, err := client.Do(req)
 	require.NoError(t, err, "could not send drop command")
