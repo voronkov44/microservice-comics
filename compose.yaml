@@ -57,11 +57,14 @@ services:
       - XKCD_URL=https://xkcd.com
       - XKCD_CONCURRENCY=10
       - WORDS_ADDRESS=words:8080
+      - BROKER_ADDRESS=nats://nats:4222
     depends_on:
       postgres:
         condition: service_healthy
         restart: true
       words:
+        condition: service_started
+      nats:
         condition: service_started
 
   tests:
@@ -82,7 +85,7 @@ services:
     volumes:
       - postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready"]
+      test: [ "CMD", "pg_isready" ]
       interval: 10s
       retries: 5
       start_period: 30s
@@ -102,6 +105,11 @@ services:
       - pgadmin:/var/lib/pgadmin
     depends_on:
       - postgres
+
+  nats:
+    image: nats
+    ports:
+      - "4222:4222"
 
 volumes:
   postgres:
