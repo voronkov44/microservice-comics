@@ -5,10 +5,13 @@ import (
 	"errors"
 	"flag"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"yadro.com/course/api/adapters/rest/middleware"
+	"yadro.com/course/api/adapters/search"
+	"yadro.com/course/api/adapters/words"
+	"yadro.com/course/api/core"
 
 	"yadro.com/course/api/adapters/rest"
 	"yadro.com/course/api/adapters/update"
@@ -32,23 +35,64 @@ func main() {
 		log.Error("cannot init update adapter", "error", err)
 		os.Exit(1)
 	}
+	wordsClient, err := words.NewClient(cfg.WordsAddress, log)
+	if err != nil {
+		log.Error("cannot init words adapter", "error", err)
+		os.Exit(1)
+	}
+	searchClient, err := search.NewClient(cfg.SearchAddress, log)
+	if err != nil {
+		log.Error("cannot init search adapter", "error", err)
+		os.Exit(1)
+	}
+
+	// приведение типов для компилятора
+	pingmap := map[string]core.Pinger{
+		"words":  wordsClient,
+		"update": updateClient,
+		"search": searchClient,
+	}
 
 	mux := http.NewServeMux()
 
-	mux.Handle("POST /api/db/update", rest.NewUpdateHandler(log, updateClient))
-	mux.Handle("GET /api/db/stats", rest.NewUpdateStatsHandler(log, updateClient))
-	mux.Handle("GET /api/db/status", rest.NewUpdateStatusHandler(log, updateClient))
-	mux.Handle("DELETE /api/db", rest.NewDropHandler(log, updateClient))
+	mux.Handle("GET /api/ping", rest.NewPingHandler(log, pingmap, cfg.HTTPConfig.Timeout))
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
+	// login
+	mux.Handle("POST /api/login", middleware.NewLoginHandler(log, cfg.AdminUser, cfg.AdminPassword, cfg.TokenTTL))
+
+	// search api
+	searchHandler := rest.NewSearchHandler(log, searchClient, cfg.HTTPConfig.Timeout)
+	mux.Handle("GET /api/search",
+		middleware.WithConcurrencyLimit(searchHandler, cfg.SearchConcurrency),
+	)
+
+	isearchHandler := rest.NewIndexedSearchHandler(log, searchClient, cfg.HTTPConfig.Timeout)
+	mux.Handle("GET /api/isearch",
+		middleware.WithRateLimit(isearchHandler, cfg.SearchRate),
+	)
+
+	// update api
+	mux.Handle("POST /api/db/update",
+		middleware.RequireSuperuser(rest.NewUpdateHandler(log, updateClient), cfg.TokenTTL),
+	)
+	mux.Handle("GET /api/db/stats",
+		rest.NewUpdateStatsHandler(log, updateClient, cfg.HTTPConfig.Timeout),
+	)
+	mux.Handle("GET /api/db/status",
+		rest.NewUpdateStatusHandler(log, updateClient, cfg.HTTPConfig.Timeout),
+	)
+	mux.Handle("DELETE /api/db",
+		middleware.RequireSuperuser(rest.NewDropHandler(log, updateClient, cfg.HTTPConfig.Timeout), cfg.TokenTTL),
+	)
 
 	server := http.Server{
 		Addr:        cfg.HTTPConfig.Address,
 		ReadTimeout: cfg.HTTPConfig.Timeout,
 		Handler:     mux,
-		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
 	go func() {
 		<-ctx.Done()
@@ -56,6 +100,10 @@ func main() {
 		if err := server.Shutdown(context.Background()); err != nil {
 			log.Error("erroneous shutdown", "error", err)
 		}
+
+		_ = updateClient.Close()
+		_ = wordsClient.Close()
+		_ = searchClient.Close()
 	}()
 
 	log.Info("Running HTTP server", "address", cfg.HTTPConfig.Address)
@@ -79,6 +127,6 @@ func mustMakeLogger(logLevel string) *slog.Logger {
 	default:
 		panic("unknown log level: " + logLevel)
 	}
-	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level, AddSource: true})
+	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
 	return slog.New(handler)
 }

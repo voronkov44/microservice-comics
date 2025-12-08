@@ -21,11 +21,15 @@ type ServiceStats struct {
 type Comics struct {
 	ID    int
 	URL   string
+	Title []string
+	Alt   []string
 	Words []string
 }
 
 type XKCDInfo struct {
 	ID          int
 	URL         string
+	Title       string
+	Alt         string
 	Description string
 }

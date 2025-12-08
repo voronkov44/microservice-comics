@@ -2,7 +2,7 @@ package grpc
 
 import (
 	"context"
-
+	"errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -20,21 +20,51 @@ type Server struct {
 }
 
 func (s *Server) Ping(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) Status(ctx context.Context, _ *emptypb.Empty) (*updatepb.StatusReply, error) {
-	return nil, status.Error(codes.Internal, "unknown status from service")
+	st := s.service.Status(ctx)
+
+	var protoSt updatepb.Status
+	switch st {
+	case core.StatusRunning:
+		protoSt = updatepb.Status_STATUS_RUNNING
+	case core.StatusIdle:
+		protoSt = updatepb.Status_STATUS_IDLE
+	default:
+		protoSt = updatepb.Status_STATUS_UNSPECIFIED
+	}
+
+	return &updatepb.StatusReply{Status: protoSt}, nil
 }
 
 func (s *Server) Update(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, nil
+	if err := s.service.Update(ctx); err != nil {
+		if errors.Is(err, core.ErrAlreadyExists) {
+			return nil, status.Error(codes.AlreadyExists, "update already running")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) Stats(ctx context.Context, _ *emptypb.Empty) (*updatepb.StatsReply, error) {
-	return nil, nil
+	st, err := s.service.Stats(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &updatepb.StatsReply{
+		WordsTotal:    int64(st.WordsTotal),
+		WordsUnique:   int64(st.WordsUnique),
+		ComicsFetched: int64(st.ComicsFetched),
+		ComicsTotal:   int64(st.ComicsTotal),
+	}, nil
 }
 
 func (s *Server) Drop(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, nil
+	if err := s.service.Drop(ctx); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &emptypb.Empty{}, nil
 }

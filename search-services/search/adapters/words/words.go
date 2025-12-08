@@ -3,14 +3,13 @@ package words
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"log/slog"
-	"yadro.com/course/update/core"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	wordspb "yadro.com/course/proto/words"
+	"yadro.com/course/search/core"
 )
 
 type Client struct {

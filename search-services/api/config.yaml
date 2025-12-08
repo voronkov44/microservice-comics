@@ -1,7 +1,4 @@
 log_level: DEBUG
-search_concurrency: 1
-search_rate: 1
-token_ttl: 1m
 words_address: localhost:81
 update_address: localhost:82
 search_address: localhost:83

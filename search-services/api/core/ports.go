@@ -18,6 +18,7 @@ type Updater interface {
 }
 
 type Searcher interface {
-	Search(context.Context, string, int) ([]Comics, error)
-	SearchIndex(context.Context, string, int) ([]Comics, error)
+	Find(ctx context.Context, phrase string, limit uint32) (SearchResult, error)
+	IndexedSearch(ctx context.Context, phrase string, limit uint32) (SearchResult, error)
+	Ping(ctx context.Context) error
 }
