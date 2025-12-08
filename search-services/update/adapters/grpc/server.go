@@ -10,13 +10,21 @@ import (
 	"yadro.com/course/update/core"
 )
 
-func NewServer(service core.Updater) *Server {
-	return &Server{service: service}
+type Notifier interface {
+	NotifyDBUpdated(ctx context.Context)
 }
 
 type Server struct {
 	updatepb.UnimplementedUpdateServer
-	service core.Updater
+	service  core.Updater
+	notifier Notifier
+}
+
+func NewServer(service core.Updater, notifier Notifier) *Server {
+	return &Server{
+		service:  service,
+		notifier: notifier,
+	}
 }
 
 func (s *Server) Ping(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
@@ -46,6 +54,12 @@ func (s *Server) Update(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, 
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	// Уведомляем брокер, что база обновилась
+	if s.notifier != nil {
+		s.notifier.NotifyDBUpdated(ctx)
+	}
+
 	return &emptypb.Empty{}, nil
 }
 
@@ -66,5 +80,11 @@ func (s *Server) Drop(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, er
 	if err := s.service.Drop(ctx); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	// При дропе так же шлем сообщение, чтобы очистить индекс
+	if s.notifier != nil {
+		s.notifier.NotifyDBUpdated(ctx)
+	}
+
 	return &emptypb.Empty{}, nil
 }

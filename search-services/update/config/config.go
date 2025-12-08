@@ -7,6 +7,10 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
+type Broker struct {
+	Address string `yaml:"address" env:"BROKER_ADDRESS" env-default:"nats://localhost:4222"`
+}
+
 type XKCD struct {
 	URL         string        `yaml:"url" env:"XKCD_URL" env-default:"xkcd.com"`
 	Concurrency int           `yaml:"concurrency" env:"XKCD_CONCURRENCY" env-default:"1"`
@@ -20,6 +24,7 @@ type Config struct {
 	XKCD         XKCD   `yaml:"xkcd"`
 	DBAddress    string `yaml:"db_address" env:"DB_ADDRESS" env-default:"localhost:82"`
 	WordsAddress string `yaml:"words_address" env:"WORDS_ADDRESS" env-default:"localhost:81"`
+	Broker       Broker `yaml:"broker"`
 }
 
 func MustLoad(configPath string) Config {

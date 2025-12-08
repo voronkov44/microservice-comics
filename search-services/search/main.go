@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"yadro.com/course/search/adapters/broker"
 	"yadro.com/course/search/adapters/initiator"
 
 	"google.golang.org/grpc"
@@ -73,6 +74,17 @@ func run(cfg config.Config, log *slog.Logger) error {
 	s := grpc.NewServer()
 	searchpb.RegisterSearchServer(s, searchgrpc.NewServer(search))
 	reflection.Register(s)
+
+	// nats subscriber
+	sub, err := broker.NewSubscriber(log, cfg.Broker.Address, "xkcd.db.updated", search)
+	if err != nil {
+		return fmt.Errorf("failed to start publisher: %v", err)
+	}
+	defer sub.Close()
+
+	if err := sub.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start subscriber loop: %v", err)
+	}
 
 	go func() {
 		<-ctx.Done()

@@ -66,6 +66,29 @@ services:
       nats:
         condition: service_started
 
+  search:
+    image: search:latest
+    build:
+      context: search-services
+      dockerfile: Dockerfile.search
+    container_name: search
+    restart: unless-stopped
+    ports:
+      - 28083:8080
+    volumes:
+      - ./search-services/search/config.yaml:/config.yaml
+    environment:
+      - SEARCH_ADDRESS=:8080
+      - DB_ADDRESS=postgres://postgres:password@postgres:5432/postgres
+      - WORDS_ADDRESS=words:8080
+      - BROKER_ADDRESS=nats://nats:4222
+      - INDEX_TTL=24h
+    depends_on:
+      postgres:
+        condition: service_healthy
+      words:
+        condition: service_started
+
   tests:
     image: tests:latest
     build: tests
@@ -74,7 +97,7 @@ services:
     entrypoint: "true"
 
   postgres:
-    image: postgres
+    image: postgres:16-alpine
     container_name: postgres
     restart: unless-stopped
     ports:
