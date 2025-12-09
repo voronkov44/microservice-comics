@@ -65,6 +65,7 @@ func (s *Service) Update(ctx context.Context) (err error) {
 	if workers > 64 {
 		workers = 64
 	}
+	s.log.Debug("starting update workers", "workers", workers, "latest", latest)
 
 	// Создаем буфферизированный канал, емкостью в 2 воркера - для отправки немного задач вперед, пока воркеры отдыхают
 	// 2 воркера - отличное значение, не слишком большое (иначе съест память) и не слишком маленькое (иначе будет блокироваться main)
