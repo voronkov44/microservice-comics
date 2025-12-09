@@ -2,6 +2,7 @@ package db
 
 import (
 	"embed"
+	"errors"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/pgx"
@@ -29,7 +30,7 @@ func (db *DB) Migrate() error {
 	err = m.Up()
 
 	if err != nil {
-		if err != migrate.ErrNoChange {
+		if !errors.Is(err, migrate.ErrNoChange) {
 			db.log.Error("migration failed", "error", err)
 			return err
 		}

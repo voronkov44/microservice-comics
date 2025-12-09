@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"yadro.com/course/update/adapters/broker"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -74,8 +75,15 @@ func run(cfg config.Config, log *slog.Logger) error {
 		return fmt.Errorf("failed to listen: %v", err)
 	}
 
+	// nats publisher
+	publisher, err := broker.NewPublisher(log, cfg.Broker.Address, "xkcd.db.updated")
+	if err != nil {
+		return fmt.Errorf("failed to create publisher: %v", err)
+	}
+	defer publisher.Close()
+
 	s := grpc.NewServer()
-	updatepb.RegisterUpdateServer(s, updategrpc.NewServer(updater))
+	updatepb.RegisterUpdateServer(s, updategrpc.NewServer(updater, publisher))
 	reflection.Register(s)
 
 	// context for Ctrl-C

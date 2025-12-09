@@ -2,8 +2,11 @@ package words
 
 import (
 	"context"
-	"errors"
+	"fmt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"log/slog"
+	"yadro.com/course/update/core"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -13,23 +16,43 @@ import (
 type Client struct {
 	log    *slog.Logger
 	client wordspb.WordsClient
+	conn   *grpc.ClientConn
 }
 
 func NewClient(address string, log *slog.Logger) (*Client, error) {
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// ClientConnection - создаем подключение для локальной сети/compose
+	conn, err := grpc.NewClient(
+		address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new grpc client for  %s: %w", address, err)
 	}
+
 	return &Client{
 		client: wordspb.NewWordsClient(conn),
+		conn:   conn,
 		log:    log,
 	}, nil
+
 }
 
-func (c Client) Norm(ctx context.Context, phrase string) ([]string, error) {
-	return nil, nil
-}
+// Close grpc connection
+func (c *Client) Close() error { return c.conn.Close() }
 
-func (c Client) Ping(ctx context.Context) error {
-	return errors.New("implement me")
+// Norm реализация порта normalizer
+// Делает grpc вызов Norm и маппит ошибки в доменные
+func (c *Client) Norm(ctx context.Context, phrase string) ([]string, error) {
+	resp, err := c.client.Norm(ctx, &wordspb.WordsRequest{Phrase: phrase})
+	if err != nil {
+		switch status.Code(err) {
+		case codes.ResourceExhausted:
+			return nil, core.ErrBadArguments
+		case codes.Unavailable, codes.DeadlineExceeded:
+			return nil, core.ErrUnavailable
+		default:
+			return nil, err
+		}
+	}
+	return resp.GetWords(), nil
 }
