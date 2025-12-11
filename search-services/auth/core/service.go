@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var emailRe = regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`)
+var emailRe = regexp.MustCompile(`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$`)
 
 func validateEmail(email string) error {
 	if !emailRe.MatchString(email) {
@@ -22,7 +23,8 @@ func validateEmail(email string) error {
 
 // JWTClaims - набор данных, который мы кладём в токен
 type JWTClaims struct {
-	Email string `json:"email"`
+	UserID uint32 `json:"user_id"`
+	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
 
@@ -87,7 +89,7 @@ func (s *Service) Register(ctx context.Context, email, password string) (string,
 	}
 
 	// Генерируем JWT для только что созданного пользователя
-	token, err := s.generateToken(created.Email)
+	token, err := s.generateToken(created)
 	if err != nil {
 		s.log.Error("failed to generate jwt on register", "email", email, "error", err)
 		return "", fmt.Errorf("failed to generate token: %w", err)
@@ -119,7 +121,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 	}
 
 	// Генерируем JWT
-	token, err := s.generateToken(u.Email)
+	token, err := s.generateToken(u)
 	if err != nil {
 		s.log.Error("failed to generate jwt", "email", email, "error", err)
 		return "", fmt.Errorf("failed to generate token: %w", err)
@@ -128,13 +130,20 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 	return token, nil
 }
 
-func (s *Service) generateToken(email string) (string, error) {
+func (s *Service) generateToken(u Users) (string, error) {
 	now := time.Now()
 
+	// Проверка положительного id, мб излишне, в бд serial, на всякий случай
+	if u.ID < 0 {
+		return "", fmt.Errorf("negative user id: %d", u.ID)
+	}
+	userID := uint32(u.ID)
+
 	claims := JWTClaims{
-		Email: email,
+		UserID: userID,
+		Email:  u.Email,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   email,
+			Subject:   strconv.FormatUint(uint64(userID), 10),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.tokenTTL)),
 		},

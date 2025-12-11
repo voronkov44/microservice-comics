@@ -2,4 +2,3 @@ log_level: DEBUG
 auth_address: localhost:84
 db_address: localhost:1234
 jwt_secret: "123"
-index_ttl: 24h
