@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -246,6 +247,104 @@ func NewIndexedSearchHandler(log *slog.Logger, search core.Searcher, timeout tim
 			"phrase", phrase,
 			"limit", limit,
 			"total", result.Total,
+			"duration", time.Since(start),
+		)
+	}
+}
+
+func NewRegisterHandler(log *slog.Logger, auth core.Auth, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+
+		var req registerRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			res.Json(w, errorResponse{Error: "bad request"}, http.StatusBadRequest)
+			return
+		}
+
+		if req.Email == "" || req.Password == "" {
+			res.Json(w, errorResponse{Error: "email and password must not be empty"}, http.StatusBadRequest)
+			return
+		}
+
+		token, err := auth.Register(ctx, req.Email, req.Password)
+		if err != nil {
+			switch {
+			case errors.Is(err, core.ErrInvalidEmail):
+				res.Json(w, errorResponse{Error: "invalid email format"}, http.StatusBadRequest)
+			case errors.Is(err, core.ErrAlreadyExists):
+				res.Json(w, errorResponse{Error: "user already exists"}, http.StatusConflict)
+			case errors.Is(err, core.ErrUnavailable):
+				res.Json(w, errorResponse{Error: "dependency unavailable"}, http.StatusServiceUnavailable)
+			default:
+				log.Error("register failed", "email", req.Email, "error", err)
+				res.Json(w, errorResponse{Error: "internal error"}, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		res.Json(w, registerResponse{Token: token}, http.StatusOK)
+
+		log.Info(
+			"user registered",
+			"email", req.Email,
+			"duration", time.Since(start),
+		)
+	}
+}
+
+func NewUserLoginHandler(log *slog.Logger, auth core.Auth, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+
+		var req loginRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			res.Json(w, errorResponse{Error: "bad request"}, http.StatusBadRequest)
+			return
+		}
+
+		if req.Email == "" || req.Password == "" {
+			res.Json(w, errorResponse{Error: "email and password must not be empty"}, http.StatusBadRequest)
+			return
+		}
+
+		token, err := auth.Login(ctx, req.Email, req.Password)
+		if err != nil {
+			switch {
+			case errors.Is(err, core.ErrInvalidEmail):
+				res.Json(w, errorResponse{Error: "invalid email format"}, http.StatusBadRequest)
+			case errors.Is(err, core.ErrInvalidCredentials):
+				res.Json(w, errorResponse{Error: "invalid credentials"}, http.StatusUnauthorized)
+			case errors.Is(err, core.ErrUnavailable):
+				res.Json(w, errorResponse{Error: "dependency unavailable"}, http.StatusServiceUnavailable)
+			default:
+				log.Error("user login failed", "email", req.Email, "error", err)
+				res.Json(w, errorResponse{Error: "internal error"}, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		res.Json(w, loginResponse{Token: token}, http.StatusOK)
+
+		log.Info(
+			"user login ok",
+			"email", req.Email,
 			"duration", time.Since(start),
 		)
 	}

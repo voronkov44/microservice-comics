@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"yadro.com/course/api/adapters/auth"
 	"yadro.com/course/api/adapters/rest/middleware"
 	"yadro.com/course/api/adapters/search"
 	"yadro.com/course/api/adapters/words"
@@ -45,12 +46,18 @@ func main() {
 		log.Error("cannot init search adapter", "error", err)
 		os.Exit(1)
 	}
+	authClient, err := auth.NewClient(cfg.AuthAddress, log)
+	if err != nil {
+		log.Error("cannot init auth adapter", "error", err)
+		os.Exit(1)
+	}
 
 	// приведение типов для компилятора
 	pingmap := map[string]core.Pinger{
 		"words":  wordsClient,
 		"update": updateClient,
 		"search": searchClient,
+		"auth":   authClient,
 	}
 
 	mux := http.NewServeMux()
@@ -85,6 +92,14 @@ func main() {
 		middleware.RequireSuperuser(rest.NewDropHandler(log, updateClient, cfg.HTTPConfig.Timeout), cfg.TokenTTL),
 	)
 
+	// auth api
+	mux.Handle("POST /api/auth/register",
+		rest.NewRegisterHandler(log, authClient, cfg.HTTPConfig.Timeout),
+	)
+	mux.Handle("POST /api/auth/login",
+		rest.NewUserLoginHandler(log, authClient, cfg.HTTPConfig.Timeout),
+	)
+
 	server := http.Server{
 		Addr:        cfg.HTTPConfig.Address,
 		ReadTimeout: cfg.HTTPConfig.Timeout,
@@ -104,6 +119,7 @@ func main() {
 		_ = updateClient.Close()
 		_ = wordsClient.Close()
 		_ = searchClient.Close()
+		_ = authClient.Close()
 	}()
 
 	log.Info("Running HTTP server", "address", cfg.HTTPConfig.Address)

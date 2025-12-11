@@ -18,6 +18,7 @@ type Config struct {
 	WordsAddress  string     `yaml:"words_address" env:"WORDS_ADDRESS" env-default:"words:81"`
 	UpdateAddress string     `yaml:"update_address" env:"UPDATE_ADDRESS" env-default:"update:82"`
 	SearchAddress string     `yaml:"search_address" env:"SEARCH_ADDRESS" env-default:"search:83"`
+	AuthAddress   string     `yaml:"auth_address"   env:"AUTH_ADDRESS"   env-default:"auth:84"`
 
 	AdminUser     string        `yaml:"admin_user" env:"ADMIN_USER" env-required:"true"`
 	AdminPassword string        `yaml:"admin_password" env:"ADMIN_PASSWORD" env-required:"true"`

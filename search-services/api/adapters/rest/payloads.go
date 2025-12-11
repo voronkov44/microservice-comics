@@ -28,3 +28,21 @@ type searchResponse struct {
 	Comics []comicResponse `json:"comics"`
 	Total  int             `json:"total"`
 }
+
+type registerRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type registerResponse struct {
+	Token string `json:"token"`
+}
+
+type loginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type loginResponse struct {
+	Token string `json:"token"`
+}
