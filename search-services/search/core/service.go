@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"math/rand"
 	"sort"
 	"strings"
 )
@@ -203,4 +204,67 @@ func makeSet(arr []string) map[string]bool {
 		m[v] = true
 	}
 	return m
+}
+
+// GetComicByID - получение комикса по id
+func (s *Service) GetComicByID(ctx context.Context, id int) (Comics, error) {
+	if id <= 0 {
+		return Comics{}, ErrBadArguments
+	}
+	return s.db.GetByID(ctx, id)
+}
+
+// GetAllComics - получение всех комиксов с пагинацией
+func (s *Service) GetAllComics(ctx context.Context, page, limit uint32) ([]Comics, uint32, error) {
+	if page == 0 {
+		page = 1
+	}
+	if limit == 0 {
+		limit = defaultLimit
+	}
+	if limit > 100 {
+		return nil, 0, ErrToLargeLimit
+	}
+
+	total, err := s.db.Count(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	offset := int((page - 1) * limit)
+	if offset >= total {
+		// возвращаем пустой список, если страницы закончились
+		return []Comics{}, uint32(total), nil
+	}
+
+	comics, err := s.db.GetAll(ctx, offset, int(limit))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return comics, uint32(total), nil
+}
+
+// RandomComic - получаем рандомный комикс
+func (s *Service) RandomComic(ctx context.Context) (Comics, error) {
+	total, err := s.db.Count(ctx)
+	if err != nil {
+		return Comics{}, err
+	}
+	if total == 0 {
+		return Comics{}, ErrNonePhrase
+	}
+
+	// случайный offset [0, total)
+	n := rand.Intn(total)
+
+	comics, err := s.db.GetAll(ctx, n, 1)
+	if err != nil {
+		return Comics{}, err
+	}
+	if len(comics) == 0 {
+		return Comics{}, ErrNonePhrase
+	}
+
+	return comics[0], nil
 }

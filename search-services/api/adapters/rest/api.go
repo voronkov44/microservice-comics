@@ -35,6 +35,8 @@ func NewPingHandler(log *slog.Logger, pingers map[string]core.Pinger, timeout ti
 	}
 }
 
+// UPDATE HANDLERS
+
 func NewUpdateHandler(log *slog.Logger, updater core.Updater) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -135,6 +137,8 @@ func NewDropHandler(log *slog.Logger, updater core.Updater, timeout time.Duratio
 		log.Info("drop ok", "duration", time.Since(start))
 	}
 }
+
+// SEARCH HANDLERS
 
 func NewSearchHandler(log *slog.Logger, search core.Searcher, timeout time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -251,6 +255,151 @@ func NewIndexedSearchHandler(log *slog.Logger, search core.Searcher, timeout tim
 		)
 	}
 }
+
+// SEARCH COMICS HANDLERS
+// get comics by id
+// get all(list) comics
+// get random comic
+
+func NewComicByIDHandler(log *slog.Logger, search core.Searcher, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+
+		idStr := r.PathValue("id")
+		if idStr == "" {
+			res.Json(w, errorResponse{Error: "id is required"}, http.StatusBadRequest)
+			return
+		}
+
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			res.Json(w, errorResponse{Error: "invalid id"}, http.StatusBadRequest)
+			return
+		}
+
+		comic, err := search.GetComic(ctx, id)
+		if err != nil {
+			switch {
+			case errors.Is(err, core.ErrBadArguments):
+				res.Json(w, errorResponse{Error: "comic not found"}, http.StatusNotFound)
+			case errors.Is(err, core.ErrUnavailable):
+				res.Json(w, errorResponse{Error: "dependency unavailable"}, http.StatusServiceUnavailable)
+			default:
+				log.Error("get comic by id failed", "id", id, "error", err)
+				res.Json(w, errorResponse{Error: "internal error"}, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		res.Json(w, comicResponse{ID: comic.ID, URL: comic.URL}, http.StatusOK)
+
+		log.Info("comic fetched by id",
+			"id", id,
+			"duration", time.Since(start),
+		)
+	}
+}
+
+func NewComicsListHandler(log *slog.Logger, search core.Searcher, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+
+		q := r.URL.Query()
+
+		page := uint32(1)
+		limit := uint32(10)
+
+		if pageStr := q.Get("page"); pageStr != "" {
+			n, err := strconv.ParseUint(pageStr, 10, 32)
+			if err != nil || n == 0 {
+				res.Json(w, errorResponse{Error: "bad page"}, http.StatusBadRequest)
+				return
+			}
+			page = uint32(n)
+		}
+
+		if limitStr := q.Get("limit"); limitStr != "" {
+			n, err := strconv.ParseUint(limitStr, 10, 32)
+			if err != nil || n == 0 {
+				res.Json(w, errorResponse{Error: "bad limit"}, http.StatusBadRequest)
+				return
+			}
+			limit = uint32(n)
+		}
+
+		result, err := search.ListComics(ctx, page, limit)
+		if err != nil {
+			switch {
+			case errors.Is(err, core.ErrBadArguments):
+				res.Json(w, errorResponse{Error: "bad request"}, http.StatusBadRequest)
+			case errors.Is(err, core.ErrUnavailable):
+				res.Json(w, errorResponse{Error: "dependency unavailable"}, http.StatusServiceUnavailable)
+			default:
+				log.Error("list comics failed", "error", err)
+				res.Json(w, errorResponse{Error: "internal error"}, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		comics := make([]comicResponse, 0, len(result.Comics))
+		for _, cmt := range result.Comics {
+			comics = append(comics, comicResponse{
+				ID:  cmt.ID,
+				URL: cmt.URL,
+			})
+		}
+
+		res.Json(w, searchResponse{
+			Comics: comics,
+			Total:  result.Total,
+		}, http.StatusOK)
+
+		log.Info("comics page ok",
+			"page", page,
+			"limit", limit,
+			"total", result.Total,
+			"duration", time.Since(start),
+		)
+	}
+}
+
+func NewRandomComicHandler(log *slog.Logger, search core.Searcher, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+
+		comic, err := search.RandomComic(ctx)
+		if err != nil {
+			switch {
+			case errors.Is(err, core.ErrUnavailable):
+				res.Json(w, errorResponse{Error: "dependency unavailable"}, http.StatusServiceUnavailable)
+			default:
+				log.Error("get random comic failed", "error", err)
+				res.Json(w, errorResponse{Error: "internal error"}, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		res.Json(w, comicResponse{ID: comic.ID, URL: comic.URL}, http.StatusOK)
+
+		log.Info("random comic fetched",
+			"id", comic.ID,
+			"duration", time.Since(start),
+		)
+	}
+}
+
+// AUTH HANDLERS
+// Registers
+// Login
 
 func NewRegisterHandler(log *slog.Logger, auth core.Auth, timeout time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

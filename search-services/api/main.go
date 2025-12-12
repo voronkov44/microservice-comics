@@ -78,6 +78,17 @@ func main() {
 		middleware.WithRateLimit(isearchHandler, cfg.SearchRate),
 	)
 
+	// search(comics api)
+	mux.Handle("GET /api/comics",
+		rest.NewComicsListHandler(log, searchClient, cfg.HTTPConfig.Timeout),
+	)
+	mux.Handle("GET /api/comics/{id}",
+		rest.NewComicByIDHandler(log, searchClient, cfg.HTTPConfig.Timeout),
+	)
+	mux.Handle("GET /api/comics/random",
+		rest.NewRandomComicHandler(log, searchClient, cfg.HTTPConfig.Timeout),
+	)
+
 	// update api
 	mux.Handle("POST /api/db/update",
 		middleware.RequireSuperuser(rest.NewUpdateHandler(log, updateClient), cfg.TokenTTL),

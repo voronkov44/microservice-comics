@@ -20,9 +20,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Search_Ping_FullMethodName          = "/search.Search/Ping"
-	Search_Find_FullMethodName          = "/search.Search/Find"
-	Search_IndexedSearch_FullMethodName = "/search.Search/IndexedSearch"
+	Search_Ping_FullMethodName           = "/search.Search/Ping"
+	Search_Find_FullMethodName           = "/search.Search/Find"
+	Search_IndexedSearch_FullMethodName  = "/search.Search/IndexedSearch"
+	Search_GetIDComic_FullMethodName     = "/search.Search/GetIDComic"
+	Search_GetAllComics_FullMethodName   = "/search.Search/GetAllComics"
+	Search_GetRandomComic_FullMethodName = "/search.Search/GetRandomComic"
 )
 
 // SearchClient is the client API for Search service.
@@ -32,6 +35,9 @@ type SearchClient interface {
 	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Find(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchReply, error)
 	IndexedSearch(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchReply, error)
+	GetIDComic(ctx context.Context, in *ComicByIDRequest, opts ...grpc.CallOption) (*ComicReply, error)
+	GetAllComics(ctx context.Context, in *ComicsPageRequest, opts ...grpc.CallOption) (*SearchReply, error)
+	GetRandomComic(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ComicReply, error)
 }
 
 type searchClient struct {
@@ -72,6 +78,36 @@ func (c *searchClient) IndexedSearch(ctx context.Context, in *SearchRequest, opt
 	return out, nil
 }
 
+func (c *searchClient) GetIDComic(ctx context.Context, in *ComicByIDRequest, opts ...grpc.CallOption) (*ComicReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ComicReply)
+	err := c.cc.Invoke(ctx, Search_GetIDComic_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *searchClient) GetAllComics(ctx context.Context, in *ComicsPageRequest, opts ...grpc.CallOption) (*SearchReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchReply)
+	err := c.cc.Invoke(ctx, Search_GetAllComics_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *searchClient) GetRandomComic(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ComicReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ComicReply)
+	err := c.cc.Invoke(ctx, Search_GetRandomComic_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SearchServer is the server API for Search service.
 // All implementations must embed UnimplementedSearchServer
 // for forward compatibility.
@@ -79,6 +115,9 @@ type SearchServer interface {
 	Ping(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	Find(context.Context, *SearchRequest) (*SearchReply, error)
 	IndexedSearch(context.Context, *SearchRequest) (*SearchReply, error)
+	GetIDComic(context.Context, *ComicByIDRequest) (*ComicReply, error)
+	GetAllComics(context.Context, *ComicsPageRequest) (*SearchReply, error)
+	GetRandomComic(context.Context, *emptypb.Empty) (*ComicReply, error)
 	mustEmbedUnimplementedSearchServer()
 }
 
@@ -97,6 +136,15 @@ func (UnimplementedSearchServer) Find(context.Context, *SearchRequest) (*SearchR
 }
 func (UnimplementedSearchServer) IndexedSearch(context.Context, *SearchRequest) (*SearchReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IndexedSearch not implemented")
+}
+func (UnimplementedSearchServer) GetIDComic(context.Context, *ComicByIDRequest) (*ComicReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetIDComic not implemented")
+}
+func (UnimplementedSearchServer) GetAllComics(context.Context, *ComicsPageRequest) (*SearchReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAllComics not implemented")
+}
+func (UnimplementedSearchServer) GetRandomComic(context.Context, *emptypb.Empty) (*ComicReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRandomComic not implemented")
 }
 func (UnimplementedSearchServer) mustEmbedUnimplementedSearchServer() {}
 func (UnimplementedSearchServer) testEmbeddedByValue()                {}
@@ -173,6 +221,60 @@ func _Search_IndexedSearch_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Search_GetIDComic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ComicByIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SearchServer).GetIDComic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Search_GetIDComic_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SearchServer).GetIDComic(ctx, req.(*ComicByIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Search_GetAllComics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ComicsPageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SearchServer).GetAllComics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Search_GetAllComics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SearchServer).GetAllComics(ctx, req.(*ComicsPageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Search_GetRandomComic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SearchServer).GetRandomComic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Search_GetRandomComic_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SearchServer).GetRandomComic(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Search_ServiceDesc is the grpc.ServiceDesc for Search service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -191,6 +293,18 @@ var Search_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "IndexedSearch",
 			Handler:    _Search_IndexedSearch_Handler,
+		},
+		{
+			MethodName: "GetIDComic",
+			Handler:    _Search_GetIDComic_Handler,
+		},
+		{
+			MethodName: "GetAllComics",
+			Handler:    _Search_GetAllComics_Handler,
+		},
+		{
+			MethodName: "GetRandomComic",
+			Handler:    _Search_GetRandomComic_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

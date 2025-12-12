@@ -22,6 +22,10 @@ type Searcher interface {
 	Find(ctx context.Context, phrase string, limit uint32) (SearchResult, error)
 	IndexedSearch(ctx context.Context, phrase string, limit uint32) (SearchResult, error)
 	Ping(ctx context.Context) error
+
+	GetComic(ctx context.Context, id int) (SearchComic, error)
+	RandomComic(ctx context.Context) (SearchComic, error)
+	ListComics(ctx context.Context, page, limit uint32) (SearchResult, error)
 }
 
 type Auth interface {
