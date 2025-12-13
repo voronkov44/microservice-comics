@@ -33,3 +33,10 @@ type Auth interface {
 	Login(ctx context.Context, email, password string) (string, error)
 	Ping(ctx context.Context) error
 }
+
+type Favorites interface {
+	Add(ctx context.Context, userID uint32, comicID int32) error
+	Delete(ctx context.Context, userID uint32, comicID int32) error
+	List(ctx context.Context, userID uint32) ([]FavoriteItem, error)
+	Ping(ctx context.Context) error
+}

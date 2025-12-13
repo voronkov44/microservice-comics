@@ -8,6 +8,7 @@ type errorResponse struct {
 	Error string `json:"error"`
 }
 
+// update payloads
 type updateStatusResponse struct {
 	Status string `json:"status"`
 }
@@ -19,6 +20,7 @@ type updateStatsResponse struct {
 	ComicsTotal   int `json:"comics_total"`
 }
 
+// search payloads
 type comicResponse struct {
 	ID  int    `json:"id"`
 	URL string `json:"url"`
@@ -29,6 +31,7 @@ type searchResponse struct {
 	Total  int             `json:"total"`
 }
 
+// auth payloads
 type registerRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -45,4 +48,14 @@ type loginRequest struct {
 
 type loginResponse struct {
 	Token string `json:"token"`
+}
+
+// favorites payloads
+type favoriteItemResponse struct {
+	ComicID       int32 `json:"comic_id"`
+	CreatedAtUnix int64 `json:"created_at_unix"`
+}
+
+type favoritesListResponse struct {
+	Items []favoriteItemResponse `json:"items"`
 }

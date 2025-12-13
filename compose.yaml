@@ -20,6 +20,7 @@ services:
       - UPDATE_ADDRESS=update:8080
       - SEARCH_ADDRESS=search:8080
       - AUTH_ADDRESS=auth:8080
+      - FAVORITES_ADDRESS=favorites:8080
       - SEARCH_CONCURRENCY=10
       - SEARCH_RATE=100
     depends_on:
@@ -27,6 +28,7 @@ services:
       - update
       - search
       - auth
+      - favorites
 
   words:
     image: words:latest
@@ -110,6 +112,24 @@ services:
         condition: service_healthy
       words:
         condition: service_started
+
+  favorites:
+    image: favorites:latest
+    build:
+      context: search-services
+      dockerfile: Dockerfile.favorites
+    container_name: favorites
+    restart: unless-stopped
+    ports:
+      - 28085:8080
+    volumes:
+      - ./search-services/favorites/config.yaml:/config.yaml
+    environment:
+      - FAVORITES_ADDRESS=:8080
+      - DB_ADDRESS=postgres://postgres:password@postgres:5432/postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   tests:
     image: tests:latest

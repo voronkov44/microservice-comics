@@ -24,3 +24,8 @@ type SearchResult struct {
 	Comics []SearchComic
 	Total  int
 }
+
+type FavoriteItem struct {
+	ComicID       int32
+	CreatedAtUnix int64
+}

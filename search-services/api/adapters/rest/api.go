@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"yadro.com/course/api/adapters/rest/middleware"
 	"yadro.com/course/api/pkg/res"
 
 	"yadro.com/course/api/core"
@@ -496,5 +497,146 @@ func NewUserLoginHandler(log *slog.Logger, auth core.Auth, timeout time.Duration
 			"email", req.Email,
 			"duration", time.Since(start),
 		)
+	}
+}
+
+// FAVORITES HANDLERS
+// list comics
+// add comic
+// delete comic
+
+func NewFavoritesListHandler(log *slog.Logger, fav core.Favorites, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		userID, ok := middleware.UserIDFromContext(r.Context())
+		if !ok || userID == 0 {
+			res.Json(w, errorResponse{Error: "unauthorized"}, http.StatusUnauthorized)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+
+		items, err := fav.List(ctx, userID)
+		if err != nil {
+			switch {
+			case errors.Is(err, core.ErrBadArguments):
+				res.Json(w, errorResponse{Error: "bad request"}, http.StatusBadRequest)
+			case errors.Is(err, core.ErrUnavailable):
+				res.Json(w, errorResponse{Error: "dependency unavailable"}, http.StatusServiceUnavailable)
+			default:
+				log.Error("favorites list failed", "error", err)
+				res.Json(w, errorResponse{Error: "internal error"}, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		resp := favoritesListResponse{Items: make([]favoriteItemResponse, 0, len(items))}
+		for _, it := range items {
+			resp.Items = append(resp.Items, favoriteItemResponse{
+				ComicID:       it.ComicID,
+				CreatedAtUnix: it.CreatedAtUnix,
+			})
+		}
+
+		res.Json(w, resp, http.StatusOK)
+		log.Info("favorites list ok", "user_id", userID, "count", len(items), "duration", time.Since(start))
+	}
+}
+
+func NewFavoritesAddHandler(log *slog.Logger, fav core.Favorites, search core.Searcher, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		userID, ok := middleware.UserIDFromContext(r.Context())
+		if !ok || userID == 0 {
+			res.Json(w, errorResponse{Error: "unauthorized"}, http.StatusUnauthorized)
+			return
+		}
+
+		idStr := r.PathValue("id")
+		comicID, err := strconv.Atoi(idStr)
+		if err != nil || comicID <= 0 {
+			res.Json(w, errorResponse{Error: "invalid id"}, http.StatusBadRequest)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+
+		// проверяем, что комикс существует
+		_, err = search.GetComic(ctx, comicID)
+		if err != nil {
+			switch {
+			case errors.Is(err, core.ErrBadArguments):
+				res.Json(w, errorResponse{Error: "comic not found"}, http.StatusNotFound)
+			case errors.Is(err, core.ErrUnavailable):
+				res.Json(w, errorResponse{Error: "dependency unavailable"}, http.StatusServiceUnavailable)
+			default:
+				log.Error("get comic before favorite add failed", "comic_id", comicID, "error", err)
+				res.Json(w, errorResponse{Error: "internal error"}, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		// сохраняем
+		if err := fav.Add(ctx, userID, int32(comicID)); err != nil {
+			switch {
+			case errors.Is(err, core.ErrAlreadyExists):
+				res.Json(w, errorResponse{Error: "already exists"}, http.StatusConflict)
+			case errors.Is(err, core.ErrBadArguments):
+				res.Json(w, errorResponse{Error: "bad request"}, http.StatusBadRequest)
+			case errors.Is(err, core.ErrUnavailable):
+				res.Json(w, errorResponse{Error: "dependency unavailable"}, http.StatusServiceUnavailable)
+			default:
+				log.Error("favorites add failed", "error", err)
+				res.Json(w, errorResponse{Error: "internal error"}, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+		log.Info("favorites add ok", "user_id", userID, "comic_id", comicID, "duration", time.Since(start))
+	}
+}
+
+func NewFavoritesDeleteHandler(log *slog.Logger, fav core.Favorites, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		userID, ok := middleware.UserIDFromContext(r.Context())
+		if !ok || userID == 0 {
+			res.Json(w, errorResponse{Error: "unauthorized"}, http.StatusUnauthorized)
+			return
+		}
+
+		idStr := r.PathValue("id")
+		comicID, err := strconv.Atoi(idStr)
+		if err != nil || comicID <= 0 {
+			res.Json(w, errorResponse{Error: "invalid id"}, http.StatusBadRequest)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+
+		if err := fav.Delete(ctx, userID, int32(comicID)); err != nil {
+			switch {
+			case errors.Is(err, core.ErrNotFound):
+				res.Json(w, errorResponse{Error: "not found"}, http.StatusNotFound)
+			case errors.Is(err, core.ErrBadArguments):
+				res.Json(w, errorResponse{Error: "bad request"}, http.StatusBadRequest)
+			case errors.Is(err, core.ErrUnavailable):
+				res.Json(w, errorResponse{Error: "dependency unavailable"}, http.StatusServiceUnavailable)
+			default:
+				log.Error("favorites delete failed", "error", err)
+				res.Json(w, errorResponse{Error: "internal error"}, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+		log.Info("favorites delete ok", "user_id", userID, "comic_id", comicID, "duration", time.Since(start))
 	}
 }

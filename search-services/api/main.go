@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"yadro.com/course/api/adapters/auth"
+	"yadro.com/course/api/adapters/favorites"
 	"yadro.com/course/api/adapters/rest/middleware"
 	"yadro.com/course/api/adapters/search"
 	"yadro.com/course/api/adapters/words"
@@ -31,6 +32,7 @@ func main() {
 	log.Info("starting server")
 	log.Debug("debug messages are enabled")
 
+	// Clients
 	updateClient, err := update.NewClient(cfg.UpdateAddress, log)
 	if err != nil {
 		log.Error("cannot init update adapter", "error", err)
@@ -51,13 +53,19 @@ func main() {
 		log.Error("cannot init auth adapter", "error", err)
 		os.Exit(1)
 	}
+	favoritesClient, err := favorites.NewClient(cfg.FavoritesAddress, log)
+	if err != nil {
+		log.Error("cannot init favorites adapter", "error", err)
+		os.Exit(1)
+	}
 
 	// приведение типов для компилятора
 	pingmap := map[string]core.Pinger{
-		"words":  wordsClient,
-		"update": updateClient,
-		"search": searchClient,
-		"auth":   authClient,
+		"words":     wordsClient,
+		"update":    updateClient,
+		"search":    searchClient,
+		"auth":      authClient,
+		"favorites": favoritesClient,
 	}
 
 	mux := http.NewServeMux()
@@ -111,6 +119,17 @@ func main() {
 		rest.NewUserLoginHandler(log, authClient, cfg.HTTPConfig.Timeout),
 	)
 
+	// favorites api
+	mux.Handle("GET /api/mycomics",
+		middleware.RequireUser(rest.NewFavoritesListHandler(log, favoritesClient, cfg.HTTPConfig.Timeout), cfg.AuthJWTSecret),
+	)
+	mux.Handle("POST /api/mycomics/{id}",
+		middleware.RequireUser(rest.NewFavoritesAddHandler(log, favoritesClient, searchClient, cfg.HTTPConfig.Timeout), cfg.AuthJWTSecret),
+	)
+	mux.Handle("DELETE /api/mycomics/{id}",
+		middleware.RequireUser(rest.NewFavoritesDeleteHandler(log, favoritesClient, cfg.HTTPConfig.Timeout), cfg.AuthJWTSecret),
+	)
+
 	server := http.Server{
 		Addr:        cfg.HTTPConfig.Address,
 		ReadTimeout: cfg.HTTPConfig.Timeout,
@@ -131,6 +150,7 @@ func main() {
 		_ = wordsClient.Close()
 		_ = searchClient.Close()
 		_ = authClient.Close()
+		_ = favoritesClient.Close()
 	}()
 
 	log.Info("Running HTTP server", "address", cfg.HTTPConfig.Address)
