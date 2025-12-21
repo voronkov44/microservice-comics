@@ -21,8 +21,21 @@ message SearchReply {
   uint32 total = 2;
 }
 
+message ComicByIDRequest {
+  uint32 id = 1;
+}
+
+message ComicsPageRequest {
+  uint32 page = 1;
+  uint32 per_page = 2;
+}
+
 service Search {
   rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
   rpc Find(SearchRequest) returns (SearchReply);
   rpc IndexedSearch(SearchRequest) returns (SearchReply);
+
+  rpc GetIDComic(ComicByIDRequest) returns (ComicReply);
+  rpc GetAllComics(ComicsPageRequest) returns (SearchReply);
+  rpc GetRandomComic(google.protobuf.Empty) returns (ComicReply);
 }

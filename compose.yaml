@@ -14,17 +14,21 @@ services:
     environment:
       - ADMIN_USER=admin
       - ADMIN_PASSWORD=password
-      - TOKEN_TTL=2m
+      - TOKEN_TTL=12h
       - API_ADDRESS=:8080
       - WORDS_ADDRESS=words:8080
       - UPDATE_ADDRESS=update:8080
       - SEARCH_ADDRESS=search:8080
+      - AUTH_ADDRESS=auth:8080
+      - FAVORITES_ADDRESS=favorites:8080
       - SEARCH_CONCURRENCY=10
       - SEARCH_RATE=100
     depends_on:
       - words
       - update
       - search
+      - auth
+      - favorites
 
   words:
     image: words:latest
@@ -55,7 +59,7 @@ services:
       - UPDATE_ADDRESS=:8080
       - DB_ADDRESS=postgres://postgres:password@postgres:5432/postgres
       - XKCD_URL=https://xkcd.com
-      - XKCD_CONCURRENCY=10
+      - XKCD_CONCURRENCY=64
       - WORDS_ADDRESS=words:8080
       - BROKER_ADDRESS=nats://nats:4222
     depends_on:
@@ -65,6 +69,26 @@ services:
         condition: service_started
       nats:
         condition: service_started
+
+  auth:
+    image: auth:latest
+    build:
+      context: search-services
+      dockerfile: Dockerfile.auth
+    container_name: auth
+    restart: unless-stopped
+    ports:
+      - 28084:8080
+    volumes:
+      - ./search-services/auth/config.yaml:/config.yaml
+    environment:
+      - AUTH_ADDRESS=:8080
+      - DB_ADDRESS=postgres://postgres:password@postgres:5432/postgres
+      - AUTH_JWT_SECRET=123
+      - TOKEN_TTL=24h
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   search:
     image: search:latest
@@ -88,6 +112,24 @@ services:
         condition: service_healthy
       words:
         condition: service_started
+
+  favorites:
+    image: favorites:latest
+    build:
+      context: search-services
+      dockerfile: Dockerfile.favorites
+    container_name: favorites
+    restart: unless-stopped
+    ports:
+      - 28085:8080
+    volumes:
+      - ./search-services/favorites/config.yaml:/config.yaml
+    environment:
+      - FAVORITES_ADDRESS=:8080
+      - DB_ADDRESS=postgres://postgres:password@postgres:5432/postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   tests:
     image: tests:latest

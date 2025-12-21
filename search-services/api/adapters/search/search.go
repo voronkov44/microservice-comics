@@ -113,3 +113,72 @@ func (c *Client) IndexedSearch(ctx context.Context, phrase string, limit uint32)
 
 	return out, nil
 }
+
+func (c *Client) GetComic(ctx context.Context, id int) (core.SearchComic, error) {
+	res, err := c.client.GetIDComic(ctx, &searchpb.ComicByIDRequest{
+		Id: uint32(id),
+	})
+	if err != nil {
+		switch status.Code(err) {
+		case codes.NotFound:
+			return core.SearchComic{}, core.ErrBadArguments
+		case codes.Unavailable, codes.DeadlineExceeded, codes.Canceled:
+			return core.SearchComic{}, core.ErrUnavailable
+		default:
+			return core.SearchComic{}, err
+		}
+	}
+
+	return core.SearchComic{
+		ID:  int(res.GetId()),
+		URL: res.GetUrl(),
+	}, nil
+}
+
+func (c *Client) RandomComic(ctx context.Context) (core.SearchComic, error) {
+	res, err := c.client.GetRandomComic(ctx, &emptypb.Empty{})
+	if err != nil {
+		switch status.Code(err) {
+		case codes.Unavailable, codes.DeadlineExceeded, codes.Canceled:
+			return core.SearchComic{}, core.ErrUnavailable
+		default:
+			return core.SearchComic{}, err
+		}
+	}
+
+	return core.SearchComic{
+		ID:  int(res.GetId()),
+		URL: res.GetUrl(),
+	}, nil
+}
+
+func (c *Client) ListComics(ctx context.Context, page, limit uint32) (core.SearchResult, error) {
+	res, err := c.client.GetAllComics(ctx, &searchpb.ComicsPageRequest{
+		Page:    page,
+		PerPage: limit,
+	})
+	if err != nil {
+		switch status.Code(err) {
+		case codes.InvalidArgument:
+			return core.SearchResult{}, core.ErrBadArguments
+		case codes.Unavailable, codes.DeadlineExceeded, codes.Canceled:
+			return core.SearchResult{}, core.ErrUnavailable
+		default:
+			return core.SearchResult{}, err
+		}
+	}
+
+	out := core.SearchResult{
+		Comics: make([]core.SearchComic, 0, len(res.GetComics())),
+		Total:  int(res.GetTotal()),
+	}
+
+	for _, cr := range res.GetComics() {
+		out.Comics = append(out.Comics, core.SearchComic{
+			ID:  int(cr.GetId()),
+			URL: cr.GetUrl(),
+		})
+	}
+
+	return out, nil
+}

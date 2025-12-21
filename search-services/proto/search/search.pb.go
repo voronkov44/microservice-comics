@@ -178,6 +178,102 @@ func (x *SearchReply) GetTotal() uint32 {
 	return 0
 }
 
+type ComicByIDRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ComicByIDRequest) Reset() {
+	*x = ComicByIDRequest{}
+	mi := &file_search_search_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ComicByIDRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ComicByIDRequest) ProtoMessage() {}
+
+func (x *ComicByIDRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_search_search_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ComicByIDRequest.ProtoReflect.Descriptor instead.
+func (*ComicByIDRequest) Descriptor() ([]byte, []int) {
+	return file_search_search_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ComicByIDRequest) GetId() uint32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+type ComicsPageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Page          uint32                 `protobuf:"varint,1,opt,name=page,proto3" json:"page,omitempty"`
+	PerPage       uint32                 `protobuf:"varint,2,opt,name=per_page,json=perPage,proto3" json:"per_page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ComicsPageRequest) Reset() {
+	*x = ComicsPageRequest{}
+	mi := &file_search_search_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ComicsPageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ComicsPageRequest) ProtoMessage() {}
+
+func (x *ComicsPageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_search_search_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ComicsPageRequest.ProtoReflect.Descriptor instead.
+func (*ComicsPageRequest) Descriptor() ([]byte, []int) {
+	return file_search_search_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ComicsPageRequest) GetPage() uint32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ComicsPageRequest) GetPerPage() uint32 {
+	if x != nil {
+		return x.PerPage
+	}
+	return 0
+}
+
 var File_search_search_proto protoreflect.FileDescriptor
 
 const file_search_search_proto_rawDesc = "" +
@@ -192,11 +288,20 @@ const file_search_search_proto_rawDesc = "" +
 	"\x03url\x18\x02 \x01(\tR\x03url\"O\n" +
 	"\vSearchReply\x12*\n" +
 	"\x06comics\x18\x01 \x03(\v2\x12.search.ComicReplyR\x06comics\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\rR\x05total2\xb1\x01\n" +
+	"\x05total\x18\x02 \x01(\rR\x05total\"\"\n" +
+	"\x10ComicByIDRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\rR\x02id\"B\n" +
+	"\x11ComicsPageRequest\x12\x12\n" +
+	"\x04page\x18\x01 \x01(\rR\x04page\x12\x19\n" +
+	"\bper_page\x18\x02 \x01(\rR\aperPage2\xeb\x02\n" +
 	"\x06Search\x126\n" +
 	"\x04Ping\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\x122\n" +
 	"\x04Find\x12\x15.search.SearchRequest\x1a\x13.search.SearchReply\x12;\n" +
-	"\rIndexedSearch\x12\x15.search.SearchRequest\x1a\x13.search.SearchReplyB\x1fZ\x1dyadro.com/course/proto/searchb\x06proto3"
+	"\rIndexedSearch\x12\x15.search.SearchRequest\x1a\x13.search.SearchReply\x12:\n" +
+	"\n" +
+	"GetIDComic\x12\x18.search.ComicByIDRequest\x1a\x12.search.ComicReply\x12>\n" +
+	"\fGetAllComics\x12\x19.search.ComicsPageRequest\x1a\x13.search.SearchReply\x12<\n" +
+	"\x0eGetRandomComic\x12\x16.google.protobuf.Empty\x1a\x12.search.ComicReplyB\x1fZ\x1dyadro.com/course/proto/searchb\x06proto3"
 
 var (
 	file_search_search_proto_rawDescOnce sync.Once
@@ -210,23 +315,31 @@ func file_search_search_proto_rawDescGZIP() []byte {
 	return file_search_search_proto_rawDescData
 }
 
-var file_search_search_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_search_search_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_search_search_proto_goTypes = []any{
-	(*SearchRequest)(nil), // 0: search.SearchRequest
-	(*ComicReply)(nil),    // 1: search.ComicReply
-	(*SearchReply)(nil),   // 2: search.SearchReply
-	(*emptypb.Empty)(nil), // 3: google.protobuf.Empty
+	(*SearchRequest)(nil),     // 0: search.SearchRequest
+	(*ComicReply)(nil),        // 1: search.ComicReply
+	(*SearchReply)(nil),       // 2: search.SearchReply
+	(*ComicByIDRequest)(nil),  // 3: search.ComicByIDRequest
+	(*ComicsPageRequest)(nil), // 4: search.ComicsPageRequest
+	(*emptypb.Empty)(nil),     // 5: google.protobuf.Empty
 }
 var file_search_search_proto_depIdxs = []int32{
 	1, // 0: search.SearchReply.comics:type_name -> search.ComicReply
-	3, // 1: search.Search.Ping:input_type -> google.protobuf.Empty
+	5, // 1: search.Search.Ping:input_type -> google.protobuf.Empty
 	0, // 2: search.Search.Find:input_type -> search.SearchRequest
 	0, // 3: search.Search.IndexedSearch:input_type -> search.SearchRequest
-	3, // 4: search.Search.Ping:output_type -> google.protobuf.Empty
-	2, // 5: search.Search.Find:output_type -> search.SearchReply
-	2, // 6: search.Search.IndexedSearch:output_type -> search.SearchReply
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
+	3, // 4: search.Search.GetIDComic:input_type -> search.ComicByIDRequest
+	4, // 5: search.Search.GetAllComics:input_type -> search.ComicsPageRequest
+	5, // 6: search.Search.GetRandomComic:input_type -> google.protobuf.Empty
+	5, // 7: search.Search.Ping:output_type -> google.protobuf.Empty
+	2, // 8: search.Search.Find:output_type -> search.SearchReply
+	2, // 9: search.Search.IndexedSearch:output_type -> search.SearchReply
+	1, // 10: search.Search.GetIDComic:output_type -> search.ComicReply
+	2, // 11: search.Search.GetAllComics:output_type -> search.SearchReply
+	1, // 12: search.Search.GetRandomComic:output_type -> search.ComicReply
+	7, // [7:13] is the sub-list for method output_type
+	1, // [1:7] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -243,7 +356,7 @@ func file_search_search_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_search_search_proto_rawDesc), len(file_search_search_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

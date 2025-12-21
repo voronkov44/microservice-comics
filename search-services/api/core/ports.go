@@ -15,10 +15,29 @@ type Updater interface {
 	Stats(context.Context) (UpdateStats, error)
 	Status(context.Context) (UpdateStatus, error)
 	Drop(context.Context) error
+	Ping(ctx context.Context) error
 }
 
 type Searcher interface {
 	Find(ctx context.Context, phrase string, limit uint32) (SearchResult, error)
 	IndexedSearch(ctx context.Context, phrase string, limit uint32) (SearchResult, error)
+	Ping(ctx context.Context) error
+
+	GetComic(ctx context.Context, id int) (SearchComic, error)
+	RandomComic(ctx context.Context) (SearchComic, error)
+	ListComics(ctx context.Context, page, limit uint32) (SearchResult, error)
+}
+
+type Auth interface {
+	Register(ctx context.Context, email, password string) (string, error)
+	Login(ctx context.Context, email, password string) (string, error)
+	BotLoginTelegram(ctx context.Context, tg TelegramProfile) (string, error)
+	Ping(ctx context.Context) error
+}
+
+type Favorites interface {
+	Add(ctx context.Context, userID uint32, comicID int32) error
+	Delete(ctx context.Context, userID uint32, comicID int32) error
+	List(ctx context.Context, userID uint32) ([]FavoriteItem, error)
 	Ping(ctx context.Context) error
 }
