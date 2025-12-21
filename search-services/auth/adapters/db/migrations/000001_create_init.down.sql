@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS user_telegram;
+DROP TABLE IF EXISTS user_comicshub;
+DROP TABLE IF EXISTS users;

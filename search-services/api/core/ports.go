@@ -31,6 +31,7 @@ type Searcher interface {
 type Auth interface {
 	Register(ctx context.Context, email, password string) (string, error)
 	Login(ctx context.Context, email, password string) (string, error)
+	BotLoginTelegram(ctx context.Context, tg TelegramProfile) (string, error)
 	Ping(ctx context.Context) error
 }
 

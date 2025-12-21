@@ -3,14 +3,14 @@ package grpc
 import (
 	"context"
 	"errors"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"log/slog"
-
-	"yadro.com/course/auth/core"
-	authpb "yadro.com/course/proto/auth"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+
+	"yadro.com/course/auth/core"
+	authpb "yadro.com/course/proto/auth"
 )
 
 type Server struct {
@@ -26,7 +26,11 @@ func NewServer(log *slog.Logger, service *core.Service) *Server {
 	}
 }
 
-func (s *Server) Register(ctx context.Context, req *authpb.RegisterRequest) (*authpb.RegisterResponse, error) {
+func (s *Server) Register(ctx context.Context, req *authpb.RegisterRequest) (*authpb.TokenResponse, error) {
+	if req.GetEmail() == "" || req.GetPassword() == "" {
+		return nil, status.Error(codes.InvalidArgument, "email and password are required")
+	}
+
 	token, err := s.service.Register(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
 		switch {
@@ -39,13 +43,14 @@ func (s *Server) Register(ctx context.Context, req *authpb.RegisterRequest) (*au
 			return nil, status.Error(codes.Internal, "internal error")
 		}
 	}
-
-	return &authpb.RegisterResponse{
-		Token: token,
-	}, nil
+	return &authpb.TokenResponse{Token: token}, nil
 }
 
-func (s *Server) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.LoginResponse, error) {
+func (s *Server) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.TokenResponse, error) {
+	if req.GetEmail() == "" || req.GetPassword() == "" {
+		return nil, status.Error(codes.InvalidArgument, "email and password are required")
+	}
+
 	token, err := s.service.Login(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
 		switch {
@@ -58,10 +63,26 @@ func (s *Server) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.L
 			return nil, status.Error(codes.Internal, "internal error")
 		}
 	}
+	return &authpb.TokenResponse{Token: token}, nil
+}
 
-	return &authpb.LoginResponse{
-		Token: token,
-	}, nil
+func (s *Server) BotLoginTelegram(ctx context.Context, req *authpb.BotLoginTelegramRequest) (*authpb.TokenResponse, error) {
+	u := req.GetUser()
+	if u == nil || u.GetTgId() <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "tg_id is required")
+	}
+
+	token, err := s.service.BotLoginTelegram(ctx, core.TelegramProfile{
+		TgID:      u.GetTgId(),
+		Username:  u.GetUsername(),
+		FirstName: u.GetFirstName(),
+		LastName:  u.GetLastName(),
+	})
+	if err != nil {
+		s.log.Error("bot login telegram failed", "tg_id", u.GetTgId(), "error", err)
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	return &authpb.TokenResponse{Token: token}, nil
 }
 
 func (s *Server) Ping(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {

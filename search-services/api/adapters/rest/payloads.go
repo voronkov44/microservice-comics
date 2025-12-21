@@ -37,16 +37,19 @@ type registerRequest struct {
 	Password string `json:"password"`
 }
 
-type registerResponse struct {
-	Token string `json:"token"`
-}
-
 type loginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-type loginResponse struct {
+type botTelegramLoginRequest struct {
+	TgID      int64  `json:"tg_id"`
+	Username  string `json:"username"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
+
+type tokenResponse struct {
 	Token string `json:"token"`
 }
 

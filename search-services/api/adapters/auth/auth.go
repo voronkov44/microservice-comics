@@ -95,3 +95,26 @@ func (c *Client) Login(ctx context.Context, email, password string) (string, err
 
 	return resp.GetToken(), nil
 }
+
+func (c *Client) BotLoginTelegram(ctx context.Context, tg core.TelegramProfile) (string, error) {
+	resp, err := c.client.BotLoginTelegram(ctx, &authpb.BotLoginTelegramRequest{
+		User: &authpb.TelegramUser{
+			TgId:      tg.TgID,
+			Username:  tg.Username,
+			FirstName: tg.FirstName,
+			LastName:  tg.LastName,
+		},
+	})
+	if err != nil {
+		switch status.Code(err) {
+		case codes.InvalidArgument:
+			return "", core.ErrBadArguments
+		case codes.Unavailable, codes.DeadlineExceeded, codes.Canceled:
+			return "", core.ErrUnavailable
+		default:
+			return "", err
+		}
+	}
+
+	return resp.GetToken(), nil
+}

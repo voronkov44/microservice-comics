@@ -25,6 +25,13 @@ type SearchResult struct {
 	Total  int
 }
 
+type TelegramProfile struct {
+	TgID      int64
+	Username  string
+	FirstName string
+	LastName  string
+}
+
 type FavoriteItem struct {
 	ComicID       int32
 	CreatedAtUnix int64

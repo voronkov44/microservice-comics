@@ -2,8 +2,10 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"regexp"
 	"strconv"
 	"time"
@@ -24,11 +26,9 @@ func validateEmail(email string) error {
 // JWTClaims - набор данных, который мы кладём в токен
 type JWTClaims struct {
 	UserID uint32 `json:"user_id"`
-	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
 
-// Service - доменный сервис авторизации
 type Service struct {
 	log       *slog.Logger
 	db        DB
@@ -43,7 +43,6 @@ func NewService(log *slog.Logger, db DB, jwtSecret string, tokenTTL time.Duratio
 	if tokenTTL <= 0 {
 		return nil, fmt.Errorf("token ttl must be positive")
 	}
-
 	return &Service{
 		log:       log,
 		db:        db,
@@ -52,7 +51,7 @@ func NewService(log *slog.Logger, db DB, jwtSecret string, tokenTTL time.Duratio
 	}, nil
 }
 
-// Register регистрирует нового пользователя и возвращает его числовой ID
+// Register - регистрация по email/password
 func (s *Service) Register(ctx context.Context, email, password string) (string, error) {
 	// Проверка, что данные не пустые
 	if email == "" || password == "" {
@@ -64,11 +63,6 @@ func (s *Service) Register(ctx context.Context, email, password string) (string,
 		return "", ErrInvalidEmail
 	}
 
-	// Проверяем, что такого юзера ещё нет
-	if _, err := s.db.GetUserByEmail(ctx, email); err == nil {
-		return "", ErrUserAlreadyExists
-	}
-
 	// Хэшируем пароль
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -76,20 +70,20 @@ func (s *Service) Register(ctx context.Context, email, password string) (string,
 		return "", fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	u := Users{
+	u, err := s.db.CreateComicshubUser(ctx, ComicsHubProfile{
 		Email:        email,
 		PasswordHash: string(hash),
-		CreatedAt:    time.Now(),
-	}
-
-	created, err := s.db.CreateUser(ctx, u)
+	})
 	if err != nil {
-		s.log.Error("failed to create user", "email", email, "error", err)
+		if errors.Is(err, ErrUserAlreadyExists) {
+			return "", ErrUserAlreadyExists
+		}
+		s.log.Error("failed to create comicshub user", "email", email, "error", err)
 		return "", fmt.Errorf("failed to create user: %w", err)
 	}
 
 	// Генерируем JWT для только что созданного пользователя
-	token, err := s.generateToken(created)
+	token, err := s.generateToken(u.ID)
 	if err != nil {
 		s.log.Error("failed to generate jwt on register", "email", email, "error", err)
 		return "", fmt.Errorf("failed to generate token: %w", err)
@@ -98,8 +92,9 @@ func (s *Service) Register(ctx context.Context, email, password string) (string,
 	return token, nil
 }
 
-// Login проверяет логин и пароль и возвращает jwt-токен
+// Login проверяет логин и пароль и возвращает jwt
 func (s *Service) Login(ctx context.Context, email, password string) (string, error) {
+	// Проверка, что данные не пустые
 	if email == "" || password == "" {
 		return "", ErrInvalidCredentials
 	}
@@ -109,48 +104,69 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 		return "", ErrInvalidEmail
 	}
 
-	u, err := s.db.GetUserByEmail(ctx, email)
+	u, hash, err := s.db.GetComicshubByEmail(ctx, email)
 	if err != nil {
 		s.log.Warn("user not found or db error on login", "email", email, "error", err)
 		return "", ErrInvalidCredentials
 	}
 
 	// Сравниваем хэш
-	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
 		return "", ErrInvalidCredentials
 	}
 
 	// Генерируем JWT
-	token, err := s.generateToken(u)
+	token, err := s.generateToken(u.ID)
 	if err != nil {
-		s.log.Error("failed to generate jwt", "email", email, "error", err)
+		s.log.Error("failed to generate jwt on login", "email", email, "error", err)
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
 
 	return token, nil
 }
 
-func (s *Service) generateToken(u Users) (string, error) {
+// BotLoginTelegram - upsert и jwt
+func (s *Service) BotLoginTelegram(ctx context.Context, tg TelegramProfile) (string, error) {
+	if tg.TgID <= 0 {
+		return "", fmt.Errorf("tg_id is required")
+	}
+
+	u, err := s.db.UpsertTelegramUser(ctx, tg)
+	if err != nil {
+		return "", err
+	}
+
+	token, err := s.generateToken(u.ID)
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
+func (s *Service) generateToken(userID int64) (string, error) {
 	now := time.Now()
 
 	// Проверка положительного id, мб излишне, в бд serial, на всякий случай
-	if u.ID < 0 {
-		return "", fmt.Errorf("negative user id: %d", u.ID)
+	if userID <= 0 {
+		return "", fmt.Errorf("bad user id: %d", userID)
 	}
-	userID := uint32(u.ID)
+	if userID > math.MaxUint32 {
+		return "", fmt.Errorf("user id too large for uint32 claim: %d", userID)
+	}
+
+	uid := uint32(userID)
 
 	claims := JWTClaims{
-		UserID: userID,
-		Email:  u.Email,
+		UserID: uid,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   strconv.FormatUint(uint64(userID), 10),
+			Subject:   strconv.FormatUint(uint64(uid), 10),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.tokenTTL)),
 		},
 	}
 
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
 	return t.SignedString(s.jwtSecret)
 }
 
