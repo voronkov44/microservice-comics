@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-//go:embed migrations/000001_create_users.up.sql
+//go:embed migrations/000001_create_init.up.sql
 var usersMigrationUp string
 
 // Migrate применяет миграцию для auth-сервиса

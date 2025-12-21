@@ -401,6 +401,7 @@ func NewRandomComicHandler(log *slog.Logger, search core.Searcher, timeout time.
 // AUTH HANDLERS
 // Registers
 // Login
+// Telegram login
 
 func NewRegisterHandler(log *slog.Logger, auth core.Auth, timeout time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -441,7 +442,7 @@ func NewRegisterHandler(log *slog.Logger, auth core.Auth, timeout time.Duration)
 			return
 		}
 
-		res.Json(w, registerResponse{Token: token}, http.StatusOK)
+		res.Json(w, tokenResponse{Token: token}, http.StatusOK)
 
 		log.Info(
 			"user registered",
@@ -490,13 +491,54 @@ func NewUserLoginHandler(log *slog.Logger, auth core.Auth, timeout time.Duration
 			return
 		}
 
-		res.Json(w, loginResponse{Token: token}, http.StatusOK)
+		res.Json(w, tokenResponse{Token: token}, http.StatusOK)
 
 		log.Info(
 			"user login ok",
 			"email", req.Email,
 			"duration", time.Since(start),
 		)
+	}
+}
+
+func NewBotTelegramLoginHandler(log *slog.Logger, auth core.Auth, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+
+		var req botTelegramLoginRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			res.Json(w, errorResponse{Error: "bad request"}, http.StatusBadRequest)
+			return
+		}
+		if req.TgID == 0 {
+			res.Json(w, errorResponse{Error: "tg_id is required"}, http.StatusBadRequest)
+			return
+		}
+
+		token, err := auth.BotLoginTelegram(ctx, core.TelegramProfile{
+			TgID:      req.TgID,
+			Username:  req.Username,
+			FirstName: req.FirstName,
+			LastName:  req.LastName,
+		})
+		if err != nil {
+			switch {
+			case errors.Is(err, core.ErrBadArguments):
+				res.Json(w, errorResponse{Error: "bad request"}, http.StatusBadRequest)
+			case errors.Is(err, core.ErrUnavailable):
+				res.Json(w, errorResponse{Error: "dependency unavailable"}, http.StatusServiceUnavailable)
+			default:
+				log.Error("bot telegram login failed", "tg_id", req.TgID, "error", err)
+				res.Json(w, errorResponse{Error: "internal error"}, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		res.Json(w, tokenResponse{Token: token}, http.StatusOK)
+		log.Info("bot telegram login ok", "tg_id", req.TgID, "duration", time.Since(start))
 	}
 }
 

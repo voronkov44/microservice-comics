@@ -13,9 +13,10 @@ type ctxKey string
 
 const userIDKey ctxKey = "user_id"
 
+// UserJWTClaims - минимальный набор для JWT
+// (только user_id, jwt.RegisteredClaims из коробки выдает поля sub, exp, iat)
 type UserJWTClaims struct {
 	UserID uint32 `json:"user_id"`
-	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
 
@@ -31,12 +32,19 @@ func RequireUser(next http.Handler, jwtSecret string) http.Handler {
 		}
 
 		claims := &UserJWTClaims{}
-		t, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %T", token.Method)
-			}
-			return secret, nil
-		})
+		t, err := jwt.ParseWithClaims(
+			tokenStr,
+			claims,
+			func(token *jwt.Token) (interface{}, error) {
+				// алгоритм HS256 (sha-256)
+				if token.Method != jwt.SigningMethodHS256 {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+				return secret, nil
+			},
+			jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+		)
+
 		if err != nil || !t.Valid || claims.UserID == 0 {
 			w.WriteHeader(http.StatusUnauthorized)
 			_, _ = w.Write([]byte("unauthorized"))
@@ -59,12 +67,15 @@ func readToken(r *http.Request) (string, bool) {
 	if authHeader == "" {
 		return "", false
 	}
+
 	if !strings.HasPrefix(authHeader, "Token ") {
 		return "", false
 	}
+
 	tokenStr := strings.TrimSpace(strings.TrimPrefix(authHeader, "Token "))
 	if tokenStr == "" {
 		return "", false
 	}
+
 	return tokenStr, true
 }

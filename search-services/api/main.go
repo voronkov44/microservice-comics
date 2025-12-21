@@ -118,6 +118,9 @@ func main() {
 	mux.Handle("POST /api/auth/login",
 		rest.NewUserLoginHandler(log, authClient, cfg.HTTPConfig.Timeout),
 	)
+	mux.Handle("POST /api/auth/bot/telegram/login",
+		rest.NewBotTelegramLoginHandler(log, authClient, cfg.HTTPConfig.Timeout),
+	)
 
 	// favorites api
 	mux.Handle("GET /api/mycomics",
