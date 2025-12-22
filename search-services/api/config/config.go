@@ -8,8 +8,9 @@ import (
 )
 
 type HTTPConfig struct {
-	Address string        `yaml:"address" env:"API_ADDRESS" env-default:"localhost:80"`
-	Timeout time.Duration `yaml:"timeout" env:"API_TIMEOUT" env-default:"5s"`
+	Address         string        `yaml:"address" env:"API_ADDRESS" env-default:"localhost:80"`
+	InternalAddress string        `yaml:"internal_address" env:"API_INTERNAL_ADDRESS" env-default:"localhost:81"`
+	Timeout         time.Duration `yaml:"timeout" env:"API_TIMEOUT" env-default:"5s"`
 }
 
 type Config struct {

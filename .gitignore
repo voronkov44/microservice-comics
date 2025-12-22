@@ -24,3 +24,6 @@ go.work
 # Mac users
 .DS_Store
 
+# telegram .env
+bot/comicsbot/.env
+

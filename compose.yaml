@@ -16,6 +16,7 @@ services:
       - ADMIN_PASSWORD=password
       - TOKEN_TTL=12h
       - API_ADDRESS=:8080
+      - API_INTERNAL_ADDRESS=:8081
       - WORDS_ADDRESS=words:8080
       - UPDATE_ADDRESS=update:8080
       - SEARCH_ADDRESS=search:8080
@@ -175,6 +176,23 @@ services:
     container_name: nats
     ports:
       - "4222:4222"
+
+  bot:
+    image: comicsbot:latest
+    build:
+      context: ./bot/comicsbot
+      dockerfile: Dockerfile.bot
+    container_name: bot
+    restart: unless-stopped
+    env_file:
+      - ./bot/comicsbot/.env
+    environment:
+      - API_BASE_URL=http://api:8080
+      - API_INTERNAL_BASE_URL=http://api:8081
+      - API_TIMEOUT=10
+    depends_on:
+      - api
+
 
 volumes:
   postgres:

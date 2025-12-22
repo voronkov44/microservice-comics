@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 	"yadro.com/course/api/adapters/auth"
 	"yadro.com/course/api/adapters/favorites"
 	"yadro.com/course/api/adapters/rest/middleware"
@@ -69,6 +70,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	internalmux := http.NewServeMux()
 
 	mux.Handle("GET /api/ping", rest.NewPingHandler(log, pingmap, cfg.HTTPConfig.Timeout))
 
@@ -118,7 +120,8 @@ func main() {
 	mux.Handle("POST /api/auth/login",
 		rest.NewUserLoginHandler(log, authClient, cfg.HTTPConfig.Timeout),
 	)
-	mux.Handle("POST /api/auth/bot/telegram/login",
+	// internal pen
+	internalmux.Handle("POST /api/auth/bot/telegram/login",
 		rest.NewBotTelegramLoginHandler(log, authClient, cfg.HTTPConfig.Timeout),
 	)
 
@@ -139,30 +142,47 @@ func main() {
 		Handler:     mux,
 	}
 
+	internalServer := http.Server{
+		Addr:        cfg.HTTPConfig.InternalAddress,
+		ReadTimeout: cfg.HTTPConfig.Timeout,
+		Handler:     internalmux,
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	go func() {
-		<-ctx.Done()
-		log.Debug("shutting down server")
-		if err := server.Shutdown(context.Background()); err != nil {
-			log.Error("erroneous shutdown", "error", err)
-		}
+	errCh := make(chan error, 2)
 
-		_ = updateClient.Close()
-		_ = wordsClient.Close()
-		_ = searchClient.Close()
-		_ = authClient.Close()
-		_ = favoritesClient.Close()
+	go func() {
+		log.Info("public HTTP server", "address", server.Addr)
+		errCh <- server.ListenAndServe()
 	}()
 
-	log.Info("Running HTTP server", "address", cfg.HTTPConfig.Address)
-	if err := server.ListenAndServe(); err != nil {
-		if !errors.Is(err, http.ErrServerClosed) {
-			log.Error("server closed unexpectedly", "error", err)
-			return
+	go func() {
+		log.Info("internal HTTP server", "address", internalServer.Addr)
+		errCh <- internalServer.ListenAndServe()
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Info("shutdown requested")
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("server stopped unexpectedly", "error", err)
 		}
 	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_ = server.Shutdown(shutdownCtx)
+	_ = internalServer.Shutdown(shutdownCtx)
+
+	_ = updateClient.Close()
+	_ = wordsClient.Close()
+	_ = searchClient.Close()
+	_ = authClient.Close()
+	_ = favoritesClient.Close()
 }
 
 func mustMakeLogger(logLevel string) *slog.Logger {
