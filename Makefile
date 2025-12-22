@@ -2,6 +2,7 @@ container_runtime := $(shell which podman || which docker)
 
 $(info using ${container_runtime})
 
+# all services
 up: down
 	${container_runtime} compose up --build -d
 
@@ -13,6 +14,17 @@ clean:
 
 run-tests: 
 	${container_runtime} run --rm --network=host tests:latest
+
+# only core without service bot
+core-up: core-down
+	${container_runtime} compose -f compose.core.yaml up --build -d
+
+core-down:
+	${container_runtime} compose -f compose.core.yaml down
+
+core-clean:
+	${container_runtime} compose -f compose.core.yaml down -v
+
 
 test:
 	make clean

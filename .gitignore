@@ -24,12 +24,14 @@ go.work
 # Mac users
 .DS_Store
 
-# telegram .env
+# Telegram-Bot .env
 bot/comicsbot/.env
+
+# Search-services .env
+.env
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 .venv/
-

@@ -186,22 +186,6 @@ services:
     ports:
       - "4222:4222"
 
-  bot:
-    image: comicsbot:latest
-    build:
-      context: ./bot/comicsbot
-      dockerfile: Dockerfile.bot
-    container_name: bot
-    restart: unless-stopped
-    env_file:
-      - ./bot/comicsbot/.env
-    environment:
-      API_BASE_URL: http://api:8080
-      API_INTERNAL_BASE_URL: http://api:8081
-      API_TIMEOUT: 10
-    depends_on:
-      - api
-
 volumes:
   postgres:
   pgadmin:
