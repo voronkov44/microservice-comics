@@ -1,0 +1,3 @@
+log_level: DEBUG
+favorites_address: localhost:85
+db_address: localhost:1234

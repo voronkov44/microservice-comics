@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: favorites
+spec:
+  selector:
+    app: favorites
+  ports:
+    - name: grpc
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: favorites
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: favorites
+  template:
+    metadata:
+      labels:
+        app: favorites
+    spec:
+      containers:
+        - name: favorites
+          image: favorites:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: grpc
+          env:
+            - name: FAVORITES_ADDRESS
+              value: ":8080"
+
+            - name: DB_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: DB_ADDRESS
+
+          volumeMounts:
+            - name: config
+              mountPath: /config.yaml
+              subPath: config.yaml
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: favorites-config

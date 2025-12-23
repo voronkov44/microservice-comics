@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: comics
+
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - nats.yaml
+  - api.yaml
+  - words.yaml
+  - update.yaml
+  - auth.yaml
+  - search.yaml
+  - favorites.yaml
+  - bot.yaml
+
+configMapGenerator:
+  - name: api-config
+    files:
+      - config.yaml=configs/api/config.yaml
+  - name: words-config
+    files:
+      - config.yaml=configs/words/config.yaml
+  - name: update-config
+    files:
+      - config.yaml=configs/update/config.yaml
+  - name: auth-config
+    files:
+      - config.yaml=configs/auth/config.yaml
+  - name: search-config
+    files:
+      - config.yaml=configs/search/config.yaml
+  - name: favorites-config
+    files:
+      - config.yaml=configs/favorites/config.yaml
+
+
+generatorOptions:
+  disableNameSuffixHash: true

@@ -1,0 +1,10 @@
+log_level: DEBUG
+words_address: localhost:81
+update_address: localhost:82
+search_address: localhost:83
+auth_address: localhost:84
+favorites_address: localhost:85
+auth_jwt_secret: "123"
+api_server:
+  address: localhost:80
+  timeout: 5s

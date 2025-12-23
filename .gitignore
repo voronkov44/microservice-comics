@@ -30,6 +30,9 @@ bot/comicsbot/.env
 # Search-services .env
 .env
 
+# Kubernetes secrets
+k8s/overlays/minikube/secrets.env
+
 # Python
 __pycache__/
 *.py[cod]

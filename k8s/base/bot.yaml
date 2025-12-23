@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bot
+  template:
+    metadata:
+      labels:
+        app: bot
+    spec:
+      containers:
+        - name: bot
+          image: comicsbot:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: BOT_TOKEN
+
+            - name: API_BASE_URL
+              value: "http://api:8080"
+            - name: API_INTERNAL_BASE_URL
+              value: "http://api:8081"
+            - name: API_TIMEOUT
+              value: "10"
