@@ -112,6 +112,8 @@ make test
 - задеплоить overlay и получить доступ к API на macOS (tunnel / port-forward)
 
 
+[Быстрый переход](https://github.com/voronkov44/microservice-comics/tree/kubernetes?tab=readme-ov-file#kubernetes-minikube---%D0%BF%D0%BE%D0%B4%D0%BD%D1%8F%D1%82%D0%B8%D0%B5-dev-%D0%BA%D0%BB%D0%B0%D1%81%D1%82%D0%B5%D1%80%D0%B0-%D0%B4%D0%BB%D1%8F-comicshub)
+
 # Хронология курса:
 ## Коротко по таскам
 
@@ -476,7 +478,7 @@ Update зависит от БД, words-сервиса и внешнего API xk
 ### 7) Kubernetes (Minikube) + Kustomize
 Собрал dev-кластер на minikube, включил аддоны, настроил `k8s/base` + `k8s/overlays/minikube`, билдил образы “внутрь” minikube и деплоил через `kubectl apply -k`.
 
-Подробный гайд по шагам - в ветке **`kubernetes`**.
+Подробный гайд по шагам - в ветке [kubernetes](https://github.com/voronkov44/microservice-comics/tree/kubernetes?tab=readme-ov-file#kubernetes-minikube---%D0%BF%D0%BE%D0%B4%D0%BD%D1%8F%D1%82%D0%B8%D0%B5-dev-%D0%BA%D0%BB%D0%B0%D1%81%D1%82%D0%B5%D1%80%D0%B0-%D0%B4%D0%BB%D1%8F-comicshub).
 
 
 ## Demo video
