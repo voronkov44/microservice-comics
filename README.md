@@ -478,6 +478,10 @@ Update зависит от БД, words-сервиса и внешнего API xk
 
 Подробный гайд по шагам - в ветке **`kubernetes`**.
 
+
+## Demo video
+🎬 Скачать демо видео, mp4 (277MB): https://github.com/voronkov44/microservice-comics/releases/download/demo/comicshub.mp4
+
 ## Что дальше
 
 - развивать UI/Frontend
